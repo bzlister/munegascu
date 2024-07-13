@@ -35,6 +35,7 @@ self.MonacoEnvironment = {
 
 let src = `(xparam) => {
   console.log("Hellooo");
+  console.log("What are you doing?");
 }`;
 
 const EndOfLineSequence = {
@@ -83,6 +84,7 @@ jsLang.loader().then(async (js) => {
     const [c_model, _] = tokenAt(afterCursor, 0, useCLRF);
 
     if (c === eol) {
+      debugger;
       const remaining = src.substring(i);
       if (remaining === afterCursor) {
         break; // done early!
@@ -110,17 +112,22 @@ jsLang.loader().then(async (js) => {
         model.applyEdits([
           {
             text: whitespace,
-            range: { startLineNumber: cursor.lineNumber, startColumn: cursor.column, endColumn: cursor.column, endLineNumber: cursor.lineNumber },
+            range: { startLineNumber: cursor.lineNumber, startColumn: cursor.column, endLineNumber: cursor.lineNumber, endColumn: cursor.column },
             forceMoveMarkers: true,
           },
         ]);
-        const savedPosition = editor.getPosition();
-        editor.trigger("keyboard", "type", {
-          text: eol,
-          forceMoveMarkers: true,
-        });
-        editor.setPosition(savedPosition);
-        i = model.getOffsetAt(savedPosition);
+        const newCursor = editor.getPosition();
+
+        // insert an extra newline if there was more content on the line after the cursor
+        if (c_model !== eol) {
+          editor.trigger("keyboard", "type", {
+            text: eol,
+            forceMoveMarkers: true,
+          });
+        }
+
+        editor.setPosition(newCursor);
+        i = model.getOffsetAt(newCursor);
       }
     } else if (c === c_model) {
       editor.setPosition({ lineNumber: cursor.lineNumber, column: cursor.column + n });
