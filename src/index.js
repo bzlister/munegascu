@@ -1,6 +1,16 @@
 import * as monaco from "monaco-editor";
 import { typedAt } from "./parserUtils";
-import { MonacoConfig } from "./config";
+// import { MonacoConfig } from "./config";
+
+const MonacoConfig = {
+  automaticLayout: true,
+  autoIndent: "none",
+  autoClosingQuotes: "always",
+  autoClosingBrackets: "always",
+  autoClosingComments: "always",
+  autoClosingDelete: "always",
+  autoClosingOvertype: "always",
+};
 
 // Since packaging is done by you, you need
 // to instruct the editor how you named the
@@ -62,24 +72,6 @@ jsLang.loader().then(async (js) => {
   model.setEOL(eol);
   blueprint.setEOL(eol);
   const useCLRF = eol !== "\n";
-  /*
-  let tokens;
-  let resolver;
-  const ready = new Promise((r) => (resolver = r));
-  setTimeout(() => {
-    tokens = monaco.editor.tokenize(src, "javascript");
-    resolver();
-  }, 500);
-
-  await ready;
-  let i = 0;
-  while (i <= src.length) {
-    const text = typedAt(src, i, tokens, model.getEOL());
-    document.getElementById("whiteboard").innerText = text;
-    i++;
-    await sleep(10);
-  }
-*/
 
   let i = 0;
   while (i < src.length) {
@@ -90,35 +82,49 @@ jsLang.loader().then(async (js) => {
     const [c, n] = tokenAt(src, i, useCLRF);
     const [c_model, _] = tokenAt(afterCursor, 0, useCLRF);
 
-    if (c.includes("\n")) {
-      debugger;
-    }
-
-    if (c === c_model) {
-      debugger;
+    if (c === eol) {
       const remaining = src.substring(i);
       if (remaining === afterCursor) {
         break; // done early!
       }
 
-      if (c_model !== eol) {
-        editor.setPosition({ lineNumber: cursor.lineNumber, column: cursor.column + n });
-        i += n;
+      // determine whether newline character has 'Enter' semantics
+      const modelNextLine = model.getLineCount() > cursor.lineNumber ? model.getLineContent(cursor.lineNumber + 1) : "";
+      const blueprintNextLine = blueprint.getLineCount() > cursor.lineNumber ? blueprint.getLineContent(cursor.lineNumber + 1) : "";
+      if (modelNextLine === blueprintNextLine) {
+        editor.trigger("keyboard", "cursorDown");
+        const newCursor = editor.getPosition();
+        i = model.getCharacterCountInRange({ startLineNumber: 1, startColumn: 1, endLineNumber: newCursor.lineNumber, endColumn: newCursor.column });
+        continue;
       } else {
-        // determine whether newline character has 'Enter' semantics
-        if (model.getLineContent(cursor + 1) === blueprint.getLineContent(cursor + 1)) {
-          editor.trigger("keyboard", "cursorDown");
-          const newCursor = editor.getPosition();
-          i = model.getCharacterCountInRange({ startLineNumber: 1, startColumn: 1, endLineNumber: newCursor.lineNumber, endColumn: newCursor.column });
-          continue;
-        } else {
-          editor.trigger("keyboard", "type", {
-            text: eol,
-            forceMoveMarkers: true,
-          });
-          i = model.getOffsetAt(editor.getPosition()); // fix this
+        let whitespace = "";
+        let j = i;
+        while (j < src.length) {
+          const [w, w_len] = tokenAt(src, j, useCLRF);
+          if (w.trim() === "") {
+            whitespace += w;
+            j += w_len;
+          } else break;
         }
+
+        model.applyEdits([
+          {
+            text: whitespace,
+            range: { startLineNumber: cursor.lineNumber, startColumn: cursor.column, endColumn: cursor.column, endLineNumber: cursor.lineNumber },
+            forceMoveMarkers: true,
+          },
+        ]);
+        const savedPosition = editor.getPosition();
+        editor.trigger("keyboard", "type", {
+          text: eol,
+          forceMoveMarkers: true,
+        });
+        editor.setPosition(savedPosition);
+        i = model.getOffsetAt(savedPosition);
       }
+    } else if (c === c_model) {
+      editor.setPosition({ lineNumber: cursor.lineNumber, column: cursor.column + n });
+      i += n;
     } else {
       editor.trigger("keyboard", "type", {
         text: c,
@@ -128,7 +134,7 @@ jsLang.loader().then(async (js) => {
       i = model.getOffsetAt(editor.getPosition()); // fix this
     }
 
-    await Promise.all([sleep(500)]); // should maybe wait for model to be updated too?
+    await Promise.all([sleep(50)]); // should maybe wait for model to be updated too?
   }
 });
 
@@ -152,28 +158,6 @@ function tokenAt(s, i, clrf) {
   return [c, 1];
 }
 
-/*
-editor.onDidChangeModelContent((event) => {
-  const changes = event.changes;
-
-  changes.forEach((change) => {
-    if (change.text == '\n') {
-      debugger;
-      const position = change.range.getStartPosition();
-
-      editor.executeEdits("", [
-        {
-          range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column + 1),
-          text: "$",
-          forceMoveMarkers: true,
-        },
-      ]);
-
-    }
-  });
-});
-*/
-
 function standardize(text) {
   const hiddenEditor = monaco.editor.create(document.getElementById("hidden"), {
     ...MonacoConfig,
@@ -182,6 +166,7 @@ function standardize(text) {
     automaticLayout: true,
   });
   const model = hiddenEditor.getModel();
+  // model.normalizeIndentation(indentation);
   const eolPreference = EOLSequenceToPreference(model.getEndOfLineSequence());
 
   return [model.getValue(eolPreference), model.getEOL()];

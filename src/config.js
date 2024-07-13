@@ -1,11 +1,11 @@
 export const MonacoConfig = {
   tokenColorCustomizations: {},
   semanticTokenColorCustomizations: {},
-  tabSize: 4,
-  indentSize: "tabSize",
-  insertSpaces: false,
+  // tabSize: 2,
+  // indentSize: "tabSize",
+  // insertSpaces: false,
   detectIndentation: true,
-  trimAutoWhitespace: true,
+  // trimAutoWhitespace: true,
   largeFileOptimizations: true,
   wordBasedSuggestions: "matchingDocuments",
   semanticHighlighting: {
@@ -279,7 +279,7 @@ export const MonacoConfig = {
   wordSeparators: "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   wordWrap: "off",
   wordWrapColumn: 80,
-  wrappingIndent: "same",
+  wrappingIndent: "none", // enter semantics
   wrappingStrategy: "simple",
   showDeprecated: true,
   inlayHints: {
