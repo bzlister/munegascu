@@ -1,5 +1,3 @@
-import * as R from "ramda";
-
 export function typedAt(src, I, tokenization, eol) {
   let s = "";
 
