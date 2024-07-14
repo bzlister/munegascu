@@ -1,6 +1,4 @@
 import * as monaco from "monaco-editor";
-import { typedAt } from "./parserUtils";
-// import { MonacoConfig } from "./config";
 
 const MonacoConfig = {
   automaticLayout: true,
@@ -17,39 +15,46 @@ let src = `(xparam) => {
   console.log("What are you doing?");
 }`;
 
-const EndOfLineSequence = {
-  LF: 0, // \n
-  CRLF: 1, // \r\n
-};
-
-const EndOfLinePreference = {
-  TextDefined: 0,
-  LF: 1, // \n
-  CRLF: 2, // \r\n
-};
-
-function EOLSequenceToPreference(x) {
-  const key = Object.keys(EndOfLineSequence).filter((key) => EndOfLineSequence[key] === x);
-  return EndOfLinePreference[key];
+enum EndOfLineSequence {
+  LF = 0, // \n
+  CRLF = 1, // \r\n
 }
 
-const jsLang = monaco.languages.getLanguages().find((l) => l.id === "javascript");
+enum EndOfLinePreference {
+  TextDefined = 0,
+  LF = 1, // \n
+  CRLF = 2, // \r\n
+}
+
+function EOLSequenceToPreference(eolSequence: EndOfLineSequence) {
+  return eolSequence === EndOfLineSequence.LF ? EndOfLinePreference.LF : EndOfLinePreference.CRLF;
+}
+
+function EOLStringToSequence(eolString: string) {
+  if (eolString === "\n") return EndOfLineSequence.LF;
+  if (eolString === "\r\n") return EndOfLineSequence.CRLF;
+  throw `Unexpected EOL string ${eolString}`;
+}
+
+const jsLang = monaco.languages.getLanguages().find((l) => l.id === "javascript") as unknown as {
+  loader(): Promise<{ conf: monaco.languages.LanguageConfiguration }>;
+};
 
 jsLang.loader().then(async (js) => {
   monaco.languages.setLanguageConfiguration("javascript", js.conf);
 
-  let eol;
+  let eol: string;
   [src, eol] = standardize(src);
   const editor = monaco.editor.create(document.getElementById("container"), {
     ...MonacoConfig,
     value: "",
     language: "javascript",
-  });
+  } as monaco.editor.IStandaloneEditorConstructionOptions);
 
   const model = editor.getModel();
   const blueprint = monaco.editor.createModel(src, "javascript");
-  model.setEOL(eol);
-  blueprint.setEOL(eol);
+  model.setEOL(EOLStringToSequence(eol));
+  blueprint.setEOL(EOLStringToSequence(eol));
   const useCLRF = eol !== "\n";
 
   let i = 0;
@@ -71,7 +76,7 @@ jsLang.loader().then(async (js) => {
       const modelNextLine = model.getLineCount() > cursor.lineNumber ? model.getLineContent(cursor.lineNumber + 1) : "";
       const blueprintNextLine = blueprint.getLineCount() > cursor.lineNumber ? blueprint.getLineContent(cursor.lineNumber + 1) : "";
       if (modelNextLine === blueprintNextLine) {
-        editor.trigger("keyboard", "cursorDown");
+        editor.trigger("keyboard", "cursorDown", null);
         const newCursor = editor.getPosition();
         i = model.getCharacterCountInRange({ startLineNumber: 1, startColumn: 1, endLineNumber: newCursor.lineNumber, endColumn: newCursor.column });
         continue;
@@ -120,13 +125,13 @@ jsLang.loader().then(async (js) => {
   }
 });
 
-function tokenAt(s, i, clrf) {
+function tokenAt(s: string, i: number, clrf: boolean): [string, number] {
   if (s == null) {
     throw "Null reference";
   }
 
   if (i < 0 || i >= s.length) {
-    return "";
+    return ["", 0];
   }
 
   const c = s.charAt(i);
@@ -140,13 +145,13 @@ function tokenAt(s, i, clrf) {
   return [c, 1];
 }
 
-function standardize(text) {
+function standardize(text: string): [string, string] {
   const hiddenEditor = monaco.editor.create(document.getElementById("hidden"), {
     ...MonacoConfig,
     value: text,
     language: "javascript",
     automaticLayout: true,
-  });
+  } as monaco.editor.IStandaloneEditorConstructionOptions);
   const model = hiddenEditor.getModel();
   // model.normalizeIndentation(indentation);
   const eolPreference = EOLSequenceToPreference(model.getEndOfLineSequence());
