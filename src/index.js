@@ -54,7 +54,6 @@ function EOLSequenceToPreference(x) {
   return EndOfLinePreference[key];
 }
 
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 const jsLang = monaco.languages.getLanguages().find((l) => l.id === "javascript");
 
 jsLang.loader().then(async (js) => {
@@ -69,7 +68,7 @@ jsLang.loader().then(async (js) => {
   });
 
   const model = editor.getModel();
-  const blueprint = new monaco.editor.createModel(src, "javascript");
+  const blueprint = monaco.editor.createModel(src, "javascript");
   model.setEOL(eol);
   blueprint.setEOL(eol);
   const useCLRF = eol !== "\n";
@@ -84,7 +83,6 @@ jsLang.loader().then(async (js) => {
     const [c_model, _] = tokenAt(afterCursor, 0, useCLRF);
 
     if (c === eol) {
-      debugger;
       const remaining = src.substring(i);
       if (remaining === afterCursor) {
         break; // done early!
@@ -140,8 +138,6 @@ jsLang.loader().then(async (js) => {
 
       i = model.getOffsetAt(editor.getPosition()); // fix this
     }
-
-    await Promise.all([sleep(50)]); // should maybe wait for model to be updated too?
   }
 });
 
@@ -175,6 +171,9 @@ function standardize(text) {
   const model = hiddenEditor.getModel();
   // model.normalizeIndentation(indentation);
   const eolPreference = EOLSequenceToPreference(model.getEndOfLineSequence());
+  const standardized = model.getValue(eolPreference);
+  const eol = model.getEOL();
 
-  return [model.getValue(eolPreference), model.getEOL()];
+  hiddenEditor.dispose();
+  return [standardized, eol];
 }
