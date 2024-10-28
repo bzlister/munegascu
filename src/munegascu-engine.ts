@@ -1,7 +1,7 @@
 import * as monaco from "monaco-editor";
 import { MonacoConfig } from "./monaco-config";
 import { EndOfLinePreference, EndOfLineSequence } from "./types";
-import { IPlaybackControl } from "./playback-control";
+import { PlaybackControl, Control } from "./control";
 
 export class MunegascuEngine {
   private init: Promise<void>;
@@ -15,10 +15,10 @@ export class MunegascuEngine {
       });
   }
 
-  public async render(): Promise<IPlaybackControl> {
+  public async render(): Promise<PlaybackControl> {
     await this.init;
-    this.type();
-    return null;
+    const frames = this.type();
+    return new PlaybackControl(new Control(this.editor, frames));
   }
 
   private type() {
@@ -34,6 +34,8 @@ export class MunegascuEngine {
     model.setEOL(this.eolStringToSequence(eol));
     const useCLRF = eol !== "\n";
 
+    const frames: number[] = [];
+
     let i = 0;
     while (i < src.length) {
       const cursor = this.editor.getPosition();
@@ -45,8 +47,12 @@ export class MunegascuEngine {
 
       if (c === eol) {
         const remaining = src.substring(i);
-        if (remaining === afterCursor) {
-          break; // done early!
+        debugger;
+
+        if (afterCursor.length > 0 && afterCursor.length <= remaining.length && remaining.substring(0, afterCursor.length) === afterCursor) {
+          this.editor.setPosition({ lineNumber: range.endLineNumber, column: range.endColumn });
+          i = model.getOffsetAt(this.editor.getPosition());
+          continue;
         }
 
         // determine whether newline character has 'Enter' semantics
@@ -97,9 +103,11 @@ export class MunegascuEngine {
           forceMoveMarkers: true,
         });
 
-        i = model.getOffsetAt(this.editor.getPosition()); // fix this
+        i = model.getOffsetAt(this.editor.getPosition());
       }
     }
+
+    return frames;
   }
 
   private standardize() {
