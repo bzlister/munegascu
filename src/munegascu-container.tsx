@@ -9,7 +9,8 @@ export const MunegascuContainer = (props: { text: string; languageId: string }) 
   const [controls, setControls] = React.useState<IPlaybackControl>();
 
   React.useEffect(() => {
-    const engine = new MunegascuEngine(text, languageId, "monaco-container");
+    alert("hook");
+    const engine = new MunegascuEngine(text, languageId, "munegascu-container");
     engine.render().then((c) => {
       console.log(`Typing states computed. Number of frames: ${undefined}`);
       setControls(c);
@@ -17,9 +18,9 @@ export const MunegascuContainer = (props: { text: string; languageId: string }) 
   }, []);
 
   return (
-    <>
+    <React.StrictMode>
       <MunegascuStagingGrounds />
-      <div id="monaco-container" style={MunegascuCanvasStyles} />
-    </>
+      <div id="munegascu-container" style={MunegascuCanvasStyles} />
+    </React.StrictMode>
   );
 };

@@ -7,11 +7,7 @@ const text = `(xparam) => {
 }`;
 
 const App: React.FC = () => {
-  return (
-    <React.StrictMode>
-      <MunegascuContainer text={text} languageId="javascript" />
-    </React.StrictMode>
-  );
+  return <MunegascuContainer text={text} languageId="javascript" />;
 };
 
 export default App;

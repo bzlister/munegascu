@@ -22,21 +22,19 @@ export class MunegascuEngine {
   }
 
   private type() {
-    let [src, eol] = this.standardize();
+    let { blueprint, src, eol } = this.standardize();
     this.editor = monaco.editor.create(document.getElementById(this.elementId), {
       ...MonacoConfig,
       value: "",
       language: this.languageId,
+      automaticLayout: true,
     } as monaco.editor.IStandaloneEditorConstructionOptions);
 
     const model = this.editor.getModel();
-    const blueprint = monaco.editor.createModel(src, this.languageId);
     model.setEOL(this.eolStringToSequence(eol));
-    blueprint.setEOL(this.eolStringToSequence(eol));
     const useCLRF = eol !== "\n";
 
     let i = 0;
-    const states: HTMLElement[] = [];
     while (i < src.length) {
       const cursor = this.editor.getPosition();
       const range = model.getFullModelRange();
@@ -101,14 +99,10 @@ export class MunegascuEngine {
 
         i = model.getOffsetAt(this.editor.getPosition()); // fix this
       }
-
-      states.push(this.editor.getDomNode());
     }
-
-    return states;
   }
 
-  private standardize(): [string, string] {
+  private standardize() {
     const hiddenEditor = monaco.editor.create(document.getElementById("staging-grounds-1"), {
       ...MonacoConfig,
       value: this.text,
@@ -121,8 +115,7 @@ export class MunegascuEngine {
     const standardized = model.getValue(eolPreference);
     const eol = model.getEOL();
 
-    hiddenEditor.dispose();
-    return [standardized, eol];
+    return { blueprint: model, src: standardized, eol };
   }
 
   private eolSequenceToPreference(eolSequence: EndOfLineSequence) {

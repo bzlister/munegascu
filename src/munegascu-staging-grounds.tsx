@@ -7,6 +7,7 @@ export const MunegascuStagingGrounds = React.memo(() => {
   return (
     <div style={{ display: "none" }}>
       <div id="staging-grounds-1" style={MunegascuCanvasStyles}></div>
+      <div id="staging-grounds-2" style={MunegascuCanvasStyles}></div>
     </div>
   );
 });
