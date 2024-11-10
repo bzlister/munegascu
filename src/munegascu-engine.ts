@@ -18,7 +18,7 @@ export class MunegascuEngine {
   public async render(): Promise<PlaybackControl> {
     await this.init;
     const frames = this.type();
-    return new PlaybackControl(new Control(this.editor, frames));
+    return new PlaybackControl(new Control(this.editor, []));
   }
 
   private type() {
@@ -34,8 +34,7 @@ export class MunegascuEngine {
     model.setEOL(this.eolStringToSequence(eol));
     const useCLRF = eol !== "\n";
 
-    const frames: number[] = [];
-
+    let frames = 0;
     let i = 0;
     while (i < src.length) {
       const cursor = this.editor.getPosition();
@@ -47,7 +46,6 @@ export class MunegascuEngine {
 
       if (c === eol) {
         const remaining = src.substring(i);
-        debugger;
 
         if (afterCursor.length > 0 && afterCursor.length <= remaining.length && remaining.substring(0, afterCursor.length) === afterCursor) {
           this.editor.setPosition({ lineNumber: range.endLineNumber, column: range.endColumn });
@@ -85,25 +83,34 @@ export class MunegascuEngine {
 
           // insert an extra newline if there was more content on the line after the cursor
           if (c_model !== eol) {
-            this.editor.trigger("keyboard", "type", {
-              text: eol,
-              forceMoveMarkers: true,
-            });
+            model.applyEdits([
+              {
+                text: eol,
+                range: { startLineNumber: cursor.lineNumber, startColumn: cursor.column, endLineNumber: newCursor.lineNumber, endColumn: newCursor.column },
+                forceMoveMarkers: true,
+              },
+            ]);
           }
 
           this.editor.setPosition(newCursor);
           i = model.getOffsetAt(newCursor);
+          this.editor.pushUndoStop();
+          frames++;
         }
       } else if (c === c_model) {
         this.editor.setPosition({ lineNumber: cursor.lineNumber, column: cursor.column + n });
         i += n;
       } else {
-        this.editor.trigger("keyboard", "type", {
-          text: c,
-          forceMoveMarkers: true,
-        });
-
+        model.applyEdits([
+          {
+            text: c,
+            forceMoveMarkers: true,
+            range: { startLineNumber: cursor.lineNumber, startColumn: cursor.column, endLineNumber: cursor.lineNumber, endColumn: cursor.column + n },
+          },
+        ]);
         i = model.getOffsetAt(this.editor.getPosition());
+        this.editor.pushUndoStop();
+        frames++;
       }
     }
 
