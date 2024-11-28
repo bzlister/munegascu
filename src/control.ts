@@ -3,17 +3,14 @@ import * as monaco from "monaco-editor";
 export class Control {
   private frame: number;
 
-  constructor(private readonly editor: monaco.editor.IStandaloneCodeEditor, private readonly steps: number[]) {
-    this.frame = steps.length - 1;
+  constructor(private readonly editor: monaco.editor.IStandaloneCodeEditor, private readonly views: string[]) {
+    this.frame = views.length - 1;
   }
 
   public next() {
-    if (this.frame < this.steps.length - 1) {
-      for (let i = 0; i < this.steps[this.frame]; i++) {
-        this.editor.trigger("munegascu", "redo", null);
-      }
-
+    if (this.frame < this.views.length - 1) {
       this.frame++;
+      this.editor.setValue(this.views[this.frame]);
     }
 
     return this.progress();
@@ -21,18 +18,15 @@ export class Control {
 
   public back() {
     if (this.frame > 0) {
-      for (let i = 0; i < this.steps[this.frame - 1]; i++) {
-        this.editor.trigger("munegascu", "undo", null);
-      }
-
       this.frame--;
+      this.editor.setValue(this.views[this.frame]);
     }
 
     return this.progress();
   }
 
   public progress() {
-    return this.frame / this.steps.length;
+    return this.frame / (this.views.length - 1);
   }
 }
 
