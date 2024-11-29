@@ -1,13 +1,19 @@
 import * as monaco from "monaco-editor";
 import { MonacoConfig } from "./monaco-config";
 import { EndOfLinePreference, EndOfLineSequence } from "./types";
-import { PlaybackControl, Control } from "./control";
+import { PlaybackControl } from "./control";
+import { IViewManager } from "./view-manager";
 
 export class MunegascuEngine {
   private init: Promise<void>;
   private editor: monaco.editor.IStandaloneCodeEditor;
 
-  constructor(private readonly text: string, private readonly languageId: string, private readonly elementId: string) {
+  constructor(
+    private readonly text: string,
+    private readonly languageId: string,
+    private readonly elementId: string,
+    private readonly viewManager: IViewManager
+  ) {
     this.init = (monaco.languages.getLanguages().find((l) => l.id === languageId) as unknown as any)
       .loader()
       .then(({ conf }: { conf: monaco.languages.LanguageConfiguration }) => {
@@ -17,8 +23,8 @@ export class MunegascuEngine {
 
   public async render(): Promise<PlaybackControl> {
     await this.init;
-    const views = this.type();
-    return new PlaybackControl(new Control(this.editor, views));
+    this.type();
+    return new PlaybackControl(this.editor, this.viewManager);
   }
 
   private type() {
@@ -35,7 +41,6 @@ export class MunegascuEngine {
     const useCLRF = eol !== "\n";
 
     let i = 0;
-    const views = [""];
     while (i < src.length) {
       const cursor = this.editor.getPosition();
       const range = model.getFullModelRange();
@@ -79,7 +84,7 @@ export class MunegascuEngine {
             this.editor.trigger("keyboard", "type", { text: eol });
           }
 
-          views.push(this.editor.getValue());
+          this.viewManager.addView(this.editor.getValue(), newCursor);
           this.editor.setPosition(newCursor);
           i = model.getOffsetAt(newCursor);
         }
@@ -88,16 +93,15 @@ export class MunegascuEngine {
         i += n;
       } else {
         this.editor.trigger("keyboard", "type", { text: c });
-        views.push(this.editor.getValue());
-        i = model.getOffsetAt(this.editor.getPosition());
+        const newCursor = this.editor.getPosition();
+        this.viewManager.addView(this.editor.getValue(), newCursor);
+        i = model.getOffsetAt(newCursor);
       }
     }
-
-    return views;
   }
 
   private standardize() {
-    const hiddenEditor = monaco.editor.create(document.getElementById("staging-grounds-1"), {
+    const hiddenEditor = monaco.editor.create(document.getElementById("staging-grounds"), {
       ...MonacoConfig,
       value: this.text,
       language: this.languageId,
